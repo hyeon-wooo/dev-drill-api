@@ -26,6 +26,7 @@ import { CommandModule } from './command/command.module';
 import { RedisModule } from './redis/redis.module';
 import { TechModule } from './tech/tech.module';
 import { QuizModule } from './quiz/quiz.module';
+import { CloudflareModule } from './cloudflare/cloudflare.module';
 
 dotenv.config();
 
@@ -71,6 +72,7 @@ dotenv.config();
     RedisModule,
     TechModule,
     QuizModule,
+    CloudflareModule,
   ],
   controllers: [AppController],
   providers: [

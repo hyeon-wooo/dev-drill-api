@@ -1,18 +1,19 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CRUDService } from 'src/common/crud.service';
-import { DeepPartial, IsNull, MoreThan, Repository } from 'typeorm';
+import {
+  DeepPartial,
+  FindOptionsWhere,
+  IsNull,
+  MoreThan,
+  Repository,
+} from 'typeorm';
 import { UserEntity } from '../infra/user.entity';
 import { LoginBodyDto, SignupBodyDto } from '../interface/user.dto';
 import { AuthService } from 'src/auth/auth.service';
-import { ERole } from 'src/auth/role/role.enum';
 import { TokenHistoryService } from './token-history.service';
 import { LogService } from 'src/log/app/log.service';
+import { CloudflareService } from 'src/cloudflare/cloudflare.service';
 
 @Injectable()
 export class UserService extends CRUDService<UserEntity> {
@@ -21,6 +22,7 @@ export class UserService extends CRUDService<UserEntity> {
     private readonly authService: AuthService,
     private readonly tokenHistoryService: TokenHistoryService,
     private readonly logService: LogService,
+    private readonly cloudflareService: CloudflareService,
   ) {
     super(repo);
   }
@@ -39,7 +41,21 @@ export class UserService extends CRUDService<UserEntity> {
       email,
       password: hashedPassword,
     });
+
+    // upload to r2
+    this.cloudflareService.uploadUser(createdUser[0]);
+
     return createdUser;
+  }
+
+  async updateUser(
+    condition: FindOptionsWhere<UserEntity>,
+    updating: DeepPartial<UserEntity>,
+  ) {
+    const result = await this.update(condition, updating);
+    const updatedUser = await this.findOne(condition);
+    if (updatedUser) this.cloudflareService.uploadUser(updatedUser);
+    return result;
   }
 
   async login(body: LoginBodyDto, ip: string, sessionId: string) {
@@ -70,7 +86,8 @@ export class UserService extends CRUDService<UserEntity> {
     const { password: _, ...me } = user;
 
     this.logService.saveUserIdToLaunchLog(sessionId, user.id);
-    this.update({ id: user.id }, { lastAccessAt: new Date() });
+    const now = new Date();
+    await this.updateUser({ id: user.id }, { lastAccessAt: now });
 
     return {
       ...token,
@@ -157,7 +174,7 @@ export class UserService extends CRUDService<UserEntity> {
     if (!isPasswordValid) return 2;
 
     const hashedPassword = await this.authService.hashPassword(body.password);
-    await this.update({ id: userId }, { password: hashedPassword });
+    await this.updateUser({ id: user.id }, { password: hashedPassword });
     return 0;
   }
 
@@ -173,7 +190,8 @@ export class UserService extends CRUDService<UserEntity> {
     if (body.canSkipAd !== undefined) updating.canSkipAd = body.canSkipAd;
     if (body.canReadAll !== undefined) updating.canReadAll = body.canReadAll;
 
-    await this.update({ id: userId }, updating);
+    await this.updateUser({ id: userId }, updating);
+
     return true;
   }
 }

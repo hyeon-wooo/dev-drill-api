@@ -81,7 +81,7 @@ export class UserController {
   ) {
     if (!user) return sendFailRes('인증 정보가 올바르지 않습니다.');
 
-    await this.service.update(
+    await this.service.updateUser(
       { id: user.id },
       { interestTopic: body.topic, interestTechId: 1 },
     );
@@ -97,7 +97,10 @@ export class UserController {
   ) {
     if (!user) return sendFailRes('인증 정보가 올바르지 않습니다.');
 
-    await this.service.update({ id: user.id }, { interestTechId: body.techId });
+    await this.service.updateUser(
+      { id: user.id },
+      { interestTechId: body.techId },
+    );
     this.logService.createTechLog({
       techId: body.techId,
       userId: user.id,
@@ -126,7 +129,7 @@ export class UserController {
       appVersion: body.appVersion,
     });
 
-    await this.service.update({ id: user.id }, { fcm: body.fcm });
+    await this.service.updateUser({ id: user.id }, { fcm: body.fcm });
 
     return sendSuccessRes(null);
   }

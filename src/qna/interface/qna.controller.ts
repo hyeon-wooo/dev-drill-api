@@ -124,7 +124,7 @@ export class QnaController {
         },
       ],
     };
-    fetch(this.configService.get('SLACK_QNA_HOOK')!, {
+    fetch(this.configService.get('SLACK_HOOK_QNA')!, {
       method: 'POST',
       body: JSON.stringify(payload),
       headers: {
