@@ -34,6 +34,7 @@ ENV OTEL_INSTRUMENTATION_PINO_LOG_KEYS="traceId,spanId,traceFlags"
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
+COPY firebase.json ./data/firebase.json
 EXPOSE 3000
 # distroless nodejs 이미지는 entrypoint가 node로 설정되어 있음
 CMD ["dist/main.js"]
