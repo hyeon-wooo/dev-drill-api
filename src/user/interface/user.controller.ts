@@ -1,4 +1,13 @@
-import { Body, Controller, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  InternalServerErrorException,
+  Patch,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { UserService } from '../app/user.service';
 import { LoginBodyDto, RegisterFcmBodyDto, SignupBodyDto } from './user.dto';
 import { sendFailRes, sendSuccessRes } from 'src/common/generateResponse';
@@ -51,6 +60,15 @@ export class UserController {
       body.deviceId,
     );
     return sendSuccessRes(result);
+  }
+
+  @Post('/restore')
+  async restoreUserWal(@Body() body: { restore_key: string; wal_dir: string }) {
+    const result = await this.service.restore(body);
+    if (result === 1) throw new BadRequestException();
+    if (result !== 0) throw new InternalServerErrorException(`code: ${result}`);
+
+    return sendSuccessRes(null);
   }
 
   @Patch('/password')

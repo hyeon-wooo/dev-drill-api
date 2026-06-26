@@ -14,6 +14,9 @@ import { AuthService } from 'src/auth/auth.service';
 import { TokenHistoryService } from './token-history.service';
 import { LogService } from 'src/log/app/log.service';
 import { CloudflareService } from 'src/cloudflare/cloudflare.service';
+import { ConfigService } from '@nestjs/config';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class UserService extends CRUDService<UserEntity> {
@@ -23,6 +26,7 @@ export class UserService extends CRUDService<UserEntity> {
     private readonly tokenHistoryService: TokenHistoryService,
     private readonly logService: LogService,
     private readonly cloudflareService: CloudflareService,
+    private readonly configService: ConfigService,
   ) {
     super(repo);
   }
@@ -193,5 +197,28 @@ export class UserService extends CRUDService<UserEntity> {
     await this.updateUser({ id: userId }, updating);
 
     return true;
+  }
+
+  async restore(options: { restore_key: string; wal_dir: string }) {
+    const { restore_key, wal_dir } = options;
+
+    if (restore_key !== this.configService.get<string>('RESTORE_KEY')) return 1;
+
+    const walFiles = fs.readdirSync(wal_dir).sort();
+    try {
+      await this.repo.manager.transaction(async (manager) => {
+        for (const fileName of walFiles) {
+          const fullPath = path.join(wal_dir, fileName);
+          const data = JSON.parse(fs.readFileSync(fullPath).toString('utf-8'));
+
+          await manager.upsert(UserEntity, data, ['id']);
+        }
+      });
+
+      return 0;
+    } catch (e) {
+      console.error(e);
+      return 2;
+    }
   }
 }
